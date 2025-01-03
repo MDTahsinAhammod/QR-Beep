@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Binary Data on Sound</title>
+</head>
+<body>
+  <button id="encode">Encode and Play</button>
+  <button id="decode">Decode Sound</button>
+  <input type="file" id="audioInput" accept="audio/*" />
+  <p id="output"></p>
+  <script>
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const analyser = audioCtx.createAnalyser();
+const binaryData = "1010101011"; // Example binary data to encode
+
+// Frequency mapping for binary
+const freqMap = { 0: 440, 1: 880 };
+
+// Encode binary data as sound
+function encodeBinary() {
+  const oscillator = audioCtx.createOscillator();
+  const gainNode = audioCtx.createGain();
+  let currentTime = audioCtx.currentTime;
+
+  oscillator.connect(gainNode).connect(audioCtx.destination);
+  oscillator.type = "sine";
+
+  for (let i = 0; i < binaryData.length; i++) {
+    const bit = binaryData[i];
+    oscillator.frequency.setValueAtTime(freqMap[bit], currentTime);
+    currentTime += 0.2; // Duration for each bit
+  }
+
+  oscillator.start();
+  oscillator.stop(currentTime);
+}
+
+// Decode sound into binary data
+async function decodeBinary() {
+  const fileInput = document.getElementById("audioInput");
+  const output = document.getElementById("output");
+
+  fileInput.onchange = async (event) => {
+    const file = event.target.files[0];
+    const audioBuffer = await file.arrayBuffer();
+    const decodedData = await audioCtx.decodeAudioData(audioBuffer);
+
+    const source = audioCtx.createBufferSource();
+    source.buffer = decodedData;
+    source.connect(analyser);
+    analyser.fftSize = 2048;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    source.start();
+
+    // Analyze frequencies
+    const detectedBits = [];
+    const interval = setInterval(() => {
+      analyser.getByteFrequencyData(dataArray);
+
+      // Check dominant frequency
+      const maxFreq = dataArray.indexOf(Math.max(...dataArray));
+      const freq = maxFreq * (audioCtx.sampleRate / analyser.fftSize);
+      if (freq > 400 && freq < 500) detectedBits.push(0);
+      if (freq > 850 && freq < 900) detectedBits.push(1);
+    }, 200);
+
+    source.onended = () => {
+      clearInterval(interval);
+      output.textContent = `Decoded Binary: ${detectedBits.join("")}`;
+    };
+  };
+}
+
+// Event Listeners
+document.getElementById("encode").addEventListener("click", encodeBinary);
+document.getElementById("decode").addEventListener("click", decodeBinary);
+
+  </script>
+</body>
+</html>

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grayscale to Sound Beep Encoder</title>
+</head>
+<body>
+    <button id="play">Play Beeps</button>
+    <h1 onclick="inp()">Text</h1>
+    <div id="rawData">
+     
+    </div>
+
+    <script>
+    let inputText = prompt("Text:");
+    function inp(){
+     inputText = prompt("Text:");
+    }
+        document.getElementById('play').addEventListener('click', () => {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            
+            function stringToAsciiHexArray(str) {
+  return str
+    .split('') // Split the string into individual characters
+    .flatMap(char => char.charCodeAt(0).toString(16).split('')); // Convert each char to ASCII hex and split into individual hex digits
+}
+
+// Example usage:
+
+
+console.log(inputText)
+
+const resultData = stringToAsciiHexArray(inputText)
+            
+            
+            
+            const inputData = resultData;
+            
+            //const inputData = ['4','8','6','5','6','c','6','c','6','f','2','0','6','8','6','9']
+            console.log('Result:',resultData)
+            
+            const inputSignal = [{'1':100},{'2':125},{'3':150},{'4':175},{'5':200},{'6':225},{'7':250},{'8':275},{'9':300},{'a':325},{'b':350},{'c':375},{'d':400},{'e':425},{'f':450},{'0':475}];
+
+
+            //now write a function that will take inpudData and return the sound beep
+            let soundBeep = [50,60,70,80]  //this will be the output       
+            inputData.forEach((element, index) => {
+                inputSignal.forEach((signal, index) => {
+                    if(signal[element]){
+                        soundBeep.push(signal[element])
+                    }
+                })
+            })
+            soundBeep.push(500);
+            console.log(soundBeep)
+
+            
+            let data = [50,60,70,80,100,125,150,150,175,200,200,200,225,250,275,300 ,325,350,375,400,425,450,475,500];
+            data = soundBeep;
+            // Grayscale values
+            const SYNC_FREQUENCY = 1000; // Frequency of sync beep in Hz
+            const SYNC_BEEP_DURATION = 1; // Duration of sync beep in seconds
+            const BEEP_DURATION = 0.03; // Duration of each data beep in seconds 
+            const GAP_DURATION = 0.02; // Gap between beeps in seconds
+
+            let currentTime = audioContext.currentTime;
+
+            // Play sync beep
+            const playSyncBeep = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+
+                oscillator.frequency.setValueAtTime(SYNC_FREQUENCY, currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+
+                oscillator.start(currentTime);
+                oscillator.stop(currentTime + SYNC_BEEP_DURATION);
+                currentTime += SYNC_BEEP_DURATION + GAP_DURATION; // Add gap after sync beep
+            };
+
+            // Play data beeps
+            const playDataBeeps = () => {
+                data.forEach((value) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+
+                    // Map grayscale value (0-255) to frequency (300Hz to 3000Hz)
+                    const frequency = 300 + (value / 255) * 2700;
+                    oscillator.frequency.setValueAtTime(frequency, currentTime);
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+
+                    oscillator.start(currentTime);
+                    oscillator.stop(currentTime + BEEP_DURATION); // Each beep lasts 0.5 seconds
+
+                    currentTime += BEEP_DURATION + GAP_DURATION; // Add gap after each beep
+                });
+            };
+
+            // Play sync beep first, then data beeps
+            playSyncBeep();
+            playDataBeeps(); 
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sound Beep to Grayscale Decoder</title>
+</head>
+<body>
+    <div id="msg"></div>
+    <script>
+        let sampleData = ['1', '1', '1', '1', '1', '2', '2', '2', '2', '3', '3', '3', '3', '3', '3', '3', '3', '3', '3', '3', '4', '4', '4', '4', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '5', '6', '6', '6', '7', '7', '7', '7', '7', '8', '8', '8', '8', '9', '9', '9', '9', '9', '9', 'A', 'A', 'A', 'A', 'B', 'B', 'B', 'B', 'B', 'B', 'C', 'C', 'C', 'C', 'C', 'C', 'C', 'D', 'D', 'D', 'D', 'E', 'E', 'E', 'F', 'F', 'F', 'F', 'F', 'F', 'F', '0', '0', '0', '0'];
+        
+        function processData(data) {
+            let data_block = [];
+            data.forEach(function (element, index, array) {
+                if (data[index] !== data[index - 1]) {
+                    data_block.push({ data: data[index], occarance: 1 });
+                } else {
+                    data_block[data_block.length - 1].occarance++;
+                }
+            });
+            data_block = data_block.filter(item => item.data !== undefined);
+            
+            let final_data = [];
+            data_block.forEach(function (element) {
+                if (element.occarance <= 5) {
+                    final_data.push(element.data);
+                } else if (element.occarance > 5 && element.occarance < 9) {
+                    final_data.push(element.data);
+                } else if (element.occarance === 9) {
+                    final_data.push(element.data, element.data);
+                } else if (element.occarance >= 10) {
+                    for (let i = 0; i < Math.round(element.occarance / 5); i++) {
+                        final_data.push(element.data);
+                    }
+                }
+            });
+            return final_data;
+        }
+
+        // Automatically start decoding
+        (() => {
+            let rawData = [];
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 4096;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            const SYNC_FREQUENCY = 1000; // Frequency of the sync beep (in Hz)
+            const STOP_FREQUENCY = 500; // Frequency indicating the end of data
+            const SYNC_THRESHOLD = 200; // Minimum amplitude to consider sync valid
+            const SYNC_DURATION = 3; // Number of consecutive matches to confirm sync
+            const CHECK_INTERVAL = 10; // Frequency check interval in ms
+
+            let syncCounter = 0;
+            let decoding = false;
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    const source = audioContext.createMediaStreamSource(stream);
+                    source.connect(analyser);
+
+                    setInterval(() => {
+                        analyser.getByteFrequencyData(dataArray);
+
+                        let maxIndex = 0;
+                        let maxValue = 0;
+                        for (let i = 0; i < bufferLength; i++) {
+                            if (dataArray[i] > maxValue) {
+                                maxValue = dataArray[i];
+                                maxIndex = i;
+                            }
+                        }
+
+                        const frequency = (maxIndex / bufferLength) * audioContext.sampleRate / 2;
+
+                        if (!decoding) {
+                            // Sync detection
+                            if (Math.abs(frequency - SYNC_FREQUENCY) < 50 && maxValue > SYNC_THRESHOLD) {
+                                syncCounter++;
+                                if (syncCounter >= SYNC_DURATION) {
+                                    decoding = true;
+                                    console.log('Sync achieved. Starting decoding...');
+                                }
+                            } else {
+                                syncCounter = 0;
+                            }
+                        } else {
+                            // Decoding logic
+                            if (Math.round((frequency - 300) / 2700 * 255) > 490) {
+                                console.log('Stop signal detected. Stopping decoding...');
+                                
+                                function asciiHexArrayToString(hexArray) {
+                                    return hexArray
+                                        .join('')
+                                        .match(/.{1,2}/g)
+                                        .map(hexPair => String.fromCharCode(parseInt(hexPair, 16)))
+                                        .join('');
+                                }
+
+                                const scanned = asciiHexArrayToString(processData(rawData));
+                                if (/^[\x20-\x7E]*$/.test(scanned)) {
+                                    document.getElementById('msg').innerHTML += scanned + '<br>';
+                                } else {
+                                    alert('Try Again');
+                                }
+
+                                if (scanned.includes('www.')) {
+                                    window.open('https://' + scanned, '_blank');
+                                }
+
+                                if (scanned.includes('+88')) {
+                                    window.open('tel:' + scanned, '_blank');
+                                }
+
+                                rawData = [];
+                                decoding = false; // Reset decoding state for the next transmission
+                            } else {
+                                const grayscaleValue = Math.round((frequency - 300) / 2700 * 255);
+                                if (grayscaleValue > 66) {
+                                    if (grayscaleValue > 95 && grayscaleValue < 105) rawData.push('1');
+                                    if (grayscaleValue > 120 && grayscaleValue < 130) rawData.push('2');
+                                    if (grayscaleValue > 145 && grayscaleValue < 155) rawData.push('3');
+                                    if (grayscaleValue > 170 && grayscaleValue < 180) rawData.push('4');
+                                    if (grayscaleValue > 195 && grayscaleValue < 205) rawData.push('5');
+                                    if (grayscaleValue > 220 && grayscaleValue < 230) rawData.push('6');
+                                    if (grayscaleValue > 245 && grayscaleValue < 255) rawData.push('7');
+                                    if (grayscaleValue > 270 && grayscaleValue < 280) rawData.push('8');
+                                    if (grayscaleValue > 295 && grayscaleValue < 305) rawData.push('9');
+                                    if (grayscaleValue > 320 && grayscaleValue < 330) rawData.push('a');
+                                    if (grayscaleValue > 345 && grayscaleValue < 355) rawData.push('b');
+                                    if (grayscaleValue > 370 && grayscaleValue < 380) rawData.push('c');
+                                    if (grayscaleValue > 395 && grayscaleValue < 405) rawData.push('d');
+                                    if (grayscaleValue > 420 && grayscaleValue < 430) rawData.push('e');
+                                    if (grayscaleValue > 445 && grayscaleValue < 455) rawData.push('f');
+                                    if (grayscaleValue > 470 && grayscaleValue < 480) rawData.push('0');
+                                }
+                            }
+                        }
+                    }, CHECK_INTERVAL);
+                })
+                .catch(err => {
+                    console.error('Error accessing microphone:', err);
+                });
+        })();
+    </script>
+</body>
+</html>

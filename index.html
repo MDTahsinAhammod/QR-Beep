@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Waveform Visualization</title>
+    <style>
+        #canvas {
+            width: 100%;
+            height: 300px;
+            border: 1px solid black;
+        }
+    </style>
+</head>
+<body>
+    <button id="beepButton">Beep</button>
+    <input type="file" id="audioFile" accept="audio/*">
+    <canvas id="canvas"></canvas>
+    <script>
+        // app.js
+
+
+
+        // app.js
+document.getElementById('beepButton').addEventListener('click', function() {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    oscillator.type = 'sine'; // Type of wave: sine, square, sawtooth, triangle
+    oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // Frequency in Hz (440Hz = A4 note)
+
+    gainNode.gain.setValueAtTime(1, audioContext.currentTime); // Volume
+    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1); // Fade out
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + 1); // Beep duration (1 second)
+});
+
+
+
+
+
+
+
+
+
+document.getElementById('audioFile').addEventListener('change', function(event) {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const canvas = document.getElementById('canvas');
+    const canvasCtx = canvas.getContext('2d');
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = function(e) {
+        audioContext.decodeAudioData(e.target.result, function(buffer) {
+            const source = audioContext.createBufferSource();
+            source.buffer = buffer;
+            const analyser = audioContext.createAnalyser();
+            analyser.fftSize = 256;
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+
+            source.connect(analyser);
+            analyser.connect(audioContext.destination);
+            source.start();
+
+            function draw() {
+                requestAnimationFrame(draw);
+                analyser.getByteFrequencyData(dataArray);
+                canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+                const barWidth = (canvas.width / bufferLength) * 2.5;
+                let barHeight;
+                let x = 0;
+
+                for(let i = 0; i < bufferLength; i++) {
+                    barHeight = dataArray[i];
+                    canvasCtx.fillStyle = 'rgb(' + (barHeight+100) + ',50,50)';
+                    canvasCtx.fillRect(x, canvas.height-barHeight/2, barWidth, barHeight/2);
+                    x += barWidth + 1;
+                }
+            }
+
+            draw();
+        });
+    };
+
+    reader.readAsArrayBuffer(file);
+});
+
+    </script>
+</body>
+</html>
