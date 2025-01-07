@@ -3,95 +3,150 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Audio Waveform Visualization</title>
-    <style>
-        #canvas {
-            width: 100%;
-            height: 300px;
-            border: 1px solid black;
-        }
-    </style>
+    <title>Grayscale to Sound Beep Encoder</title>
+    <link
+    rel="stylesheet"
+    href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+  />
 </head>
 <body>
-    <button id="beepButton">Beep</button>
-    <input type="file" id="audioFile" accept="audio/*">
-    <canvas id="canvas"></canvas>
+<div class="container mt-5">
+    <div class="text-center">
+      <button id="play" class="btn btn-primary mb-3">Play Beeps</button>
+      <button class="btn btn-danger mb-3">Download As Audio File</button>
+    </div>
+
+    <div id="rawData" class="mb-3">
+      <!-- Raw data will go here -->
+    </div>
+
+    <div class="form-group">
+      <textarea
+        id="myTextarea"
+        rows="4"
+        cols="50"
+        class="form-control"
+      ></textarea>
+    </div>
+
+    <div class="text-center">
+      <button id="getDataButton" class="btn btn-success">Generate Sound Signal</button>
+    </div>
+
+    <p id="output" class="mt-3 text-center text-info"></p>
+  </div>
+  
+
+<script type="text/javascript" charset="utf-8">
+ document.getElementById('getDataButton').addEventListener('click', function () {
+    // Get the textarea element
+    const textarea = document.getElementById('myTextarea');
+    
+    // Get the value from the textarea
+    const text = textarea.value;
+    inputText = text ;
+    textarea.value = '';
+    // Display the text in the output paragraph
+    document.getElementById('output').innerHTML = `Sound Signal Available for: <h2 class="text-black"> ${text} </h2>`;
+});
+
+</script>
+
     <script>
-        // app.js
+    let inputText = '';
+    function inp(){
+     inputText = prompt("Text:");
+    }
+    
+    
+        document.getElementById('play').addEventListener('click', () => {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            
+            function stringToAsciiHexArray(str) {
+  return str
+    .split('') // Split the string into individual characters
+    .flatMap(char => char.charCodeAt(0).toString(16).split('')); // Convert each char to ASCII hex and split into individual hex digits
+}
+
+// Example usage:
 
 
+console.log(inputText)
 
-        // app.js
-document.getElementById('beepButton').addEventListener('click', function() {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    oscillator.type = 'sine'; // Type of wave: sine, square, sawtooth, triangle
-    oscillator.frequency.setValueAtTime(440, audioContext.currentTime); // Frequency in Hz (440Hz = A4 note)
-
-    gainNode.gain.setValueAtTime(1, audioContext.currentTime); // Volume
-    gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1); // Fade out
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + 1); // Beep duration (1 second)
-});
+const resultData = stringToAsciiHexArray(inputText)
+            
+            
+            
+            const inputData = resultData;
+            
+            //const inputData = ['4','8','6','5','6','c','6','c','6','f','2','0','6','8','6','9']
+            console.log('Result:',resultData)
+            
+            const inputSignal = [{'1':100},{'2':125},{'3':150},{'4':175},{'5':200},{'6':225},{'7':250},{'8':275},{'9':300},{'a':325},{'b':350},{'c':375},{'d':400},{'e':425},{'f':450},{'0':475}];
 
 
+            //now write a function that will take inpudData and return the sound beep
+            let soundBeep = [50,60,70,80]  //this will be the output       
+            inputData.forEach((element, index) => {
+                inputSignal.forEach((signal, index) => {
+                    if(signal[element]){
+                        soundBeep.push(signal[element])
+                    }
+                })
+            })
+            soundBeep.push(500);
+            console.log(soundBeep)
 
+            
+            let data = [50,60,70,80,100,125,150,150,175,200,200,200,225,250,275,300 ,325,350,375,400,425,450,475,500];
+            data = soundBeep;
+            // Grayscale values
+            const SYNC_FREQUENCY = 1000; // Frequency of sync beep in Hz
+            const SYNC_BEEP_DURATION = 1; // Duration of sync beep in seconds
+            const BEEP_DURATION = 0.03; // Duration of each data beep in seconds 
+            const GAP_DURATION = 0.02; // Gap between beeps in seconds
 
+            let currentTime = audioContext.currentTime;
 
+            // Play sync beep
+            const playSyncBeep = () => {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
 
+                oscillator.frequency.setValueAtTime(SYNC_FREQUENCY, currentTime);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
 
+                oscillator.start(currentTime);
+                oscillator.stop(currentTime + SYNC_BEEP_DURATION);
+                currentTime += SYNC_BEEP_DURATION + GAP_DURATION; // Add gap after sync beep
+            };
 
+            // Play data beeps
+            const playDataBeeps = () => {
+                data.forEach((value) => {
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
 
-document.getElementById('audioFile').addEventListener('change', function(event) {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const canvas = document.getElementById('canvas');
-    const canvasCtx = canvas.getContext('2d');
-    const file = event.target.files[0];
-    const reader = new FileReader();
+                    // Map grayscale value (0-255) to frequency (300Hz to 3000Hz)
+                    const frequency = 300 + (value / 255) * 2700;
+                    oscillator.frequency.setValueAtTime(frequency, currentTime);
 
-    reader.onload = function(e) {
-        audioContext.decodeAudioData(e.target.result, function(buffer) {
-            const source = audioContext.createBufferSource();
-            source.buffer = buffer;
-            const analyser = audioContext.createAnalyser();
-            analyser.fftSize = 256;
-            const bufferLength = analyser.frequencyBinCount;
-            const dataArray = new Uint8Array(bufferLength);
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
 
-            source.connect(analyser);
-            analyser.connect(audioContext.destination);
-            source.start();
+                    oscillator.start(currentTime);
+                    oscillator.stop(currentTime + BEEP_DURATION); // Each beep lasts 0.5 seconds
 
-            function draw() {
-                requestAnimationFrame(draw);
-                analyser.getByteFrequencyData(dataArray);
-                canvasCtx.fillStyle = 'rgb(0, 0, 0)';
-                canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
-                const barWidth = (canvas.width / bufferLength) * 2.5;
-                let barHeight;
-                let x = 0;
+                    currentTime += BEEP_DURATION + GAP_DURATION; // Add gap after each beep
+                });
+            };
 
-                for(let i = 0; i < bufferLength; i++) {
-                    barHeight = dataArray[i];
-                    canvasCtx.fillStyle = 'rgb(' + (barHeight+100) + ',50,50)';
-                    canvasCtx.fillRect(x, canvas.height-barHeight/2, barWidth, barHeight/2);
-                    x += barWidth + 1;
-                }
-            }
-
-            draw();
+            // Play sync beep first, then data beeps
+            playSyncBeep();
+            playDataBeeps(); 
         });
-    };
-
-    reader.readAsArrayBuffer(file);
-});
-
     </script>
 </body>
 </html>
